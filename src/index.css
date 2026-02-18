@@ -1,0 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer base {
+  :root {
+    /* Core brand palette — deep navy + teal */
+    --background: 210 20% 98%;
+    --foreground: 215 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 30% 12%;
+
+    --primary: 174 72% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 25% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 16% 50%;
+
+    --accent: 174 72% 36%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 4 86% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 174 72% 36%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar tokens */
+    --sidebar-background: 215 35% 11%;
+    --sidebar-foreground: 210 30% 85%;
+    --sidebar-primary: 174 72% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 30% 16%;
+    --sidebar-accent-foreground: 210 30% 92%;
+    --sidebar-border: 215 30% 16%;
+    --sidebar-ring: 174 72% 36%;
+
+    /* Custom semantic tokens */
+    --navy: 215 35% 11%;
+    --navy-hover: 215 30% 16%;
+    --teal: 174 72% 36%;
+    --teal-light: 174 60% 90%;
+    --teal-dark: 174 72% 28%;
+    --amber: 38 92% 50%;
+    --amber-light: 38 100% 92%;
+    --rose: 4 86% 58%;
+    --rose-light: 4 86% 94%;
+    --blue-accent: 217 91% 60%;
+    --blue-light: 214 100% 94%;
+    --emerald: 158 64% 40%;
+    --emerald-light: 150 60% 92%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(174 72% 36%), hsl(174 72% 28%));
+    --gradient-navy: linear-gradient(180deg, hsl(215 35% 11%), hsl(215 30% 8%));
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 20% 98%));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px 0 hsl(215 30% 12% / 0.08), 0 1px 2px -1px hsl(215 30% 12% / 0.06);
+    --shadow-md: 0 4px 12px -2px hsl(215 30% 12% / 0.10), 0 2px 6px -2px hsl(215 30% 12% / 0.07);
+    --shadow-lg: 0 10px 28px -5px hsl(215 30% 12% / 0.14), 0 4px 12px -3px hsl(215 30% 12% / 0.08);
+    --shadow-glow: 0 0 24px hsl(174 72% 36% / 0.25);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+}
+
+@layer utilities {
+  .sidebar-gradient {
+    background: var(--gradient-navy);
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-md);
+  }
+
+  .glow-teal {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .text-gradient-teal {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 2px;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.35s ease-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .status-vacant {
+    @apply bg-emerald-100 text-emerald-700 border border-emerald-200;
+  }
+  .status-occupied {
+    @apply bg-blue-100 text-blue-700 border border-blue-200;
+  }
+  .status-maintenance {
+    @apply bg-amber-100 text-amber-700 border border-amber-200;
+  }
+  .status-reserved {
+    @apply bg-purple-100 text-purple-700 border border-purple-200;
+  }
+  .status-paid {
+    @apply bg-emerald-100 text-emerald-700 border border-emerald-200;
+  }
+  .status-unpaid {
+    @apply bg-rose-100 text-rose-700 border border-rose-200;
+  }
+  .status-overdue {
+    @apply bg-orange-100 text-orange-700 border border-orange-200;
+  }
+  .status-pending {
+    @apply bg-amber-100 text-amber-700 border border-amber-200;
+  }
+}
