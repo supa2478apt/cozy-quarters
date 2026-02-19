@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import { LoginPage } from "./pages/Login";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
+import { Routes, Route, Navigate } from "react-router-dom";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Buildings from "./pages/admin/Buildings";
 import Rooms from "./pages/admin/Rooms";
@@ -14,29 +15,62 @@ import Contracts from "./pages/admin/Contracts";
 import Bills from "./pages/admin/Bills";
 import Meters from "./pages/admin/Meters";
 import Reports from "./pages/admin/Reports";
+
 import TenantDashboard from "./pages/tenant/TenantDashboard";
 import TenantBills from "./pages/tenant/TenantBills";
 import TenantPayment from "./pages/tenant/TenantPayment";
 import NotFound from "./pages/NotFound";
 
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+
 const queryClient = new QueryClient();
 
-type DemoRole = "admin" | "tenant" | null;
-
 const App = () => {
-  const [demoRole, setDemoRole] = useState<DemoRole>(null);
+  const [userRole, setUserRole] = useState<"admin" | "tenant" | null>(null);
+  const [userName, setUserName] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
-  const handleDemoLogin = (role: "admin" | "tenant") => setDemoRole(role);
-  const handleSignOut = () => setDemoRole(null);
-  const handleLogin = async () => { /* Firebase auth handled in production */ };
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const snap = await getDoc(doc(db, "users", user.uid));
 
-  if (!demoRole) {
+        if (snap.exists()) {
+          const data = snap.data();
+          setUserRole(data.role);
+          setUserName(data.name || "");
+          setUserEmail(data.email || "");
+        }
+      } else {
+        setUserRole(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    setUserRole(null);
+  };
+
+  if (loading) {
+  return <div style={{ padding: 50 }}>Loading...</div>;
+}
+
+
+  // 🔐 ถ้ายังไม่ login
+  if (!userRole) {
     return (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <LoginPage onLogin={handleLogin} onDemoLogin={handleDemoLogin} />
+          <LoginPage />
         </TooltipProvider>
       </QueryClientProvider>
     );
@@ -47,16 +81,15 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
           <Routes>
-            {demoRole === "admin" ? (
+            {userRole === "admin" ? (
               <Route
                 path="/admin"
                 element={
                   <DashboardLayout
                     role="admin"
-                    userName="Admin User"
-                    userEmail="admin@dormmanager.com"
+                    userName={userName}
+                    userEmail={userEmail}
                     onSignOut={handleSignOut}
                   />
                 }
@@ -76,8 +109,8 @@ const App = () => {
                 element={
                   <DashboardLayout
                     role="tenant"
-                    userName="Somchai Jaidee"
-                    userEmail="somchai@email.com"
+                    userName={userName}
+                    userEmail={userEmail}
                     onSignOut={handleSignOut}
                   />
                 }
@@ -87,10 +120,27 @@ const App = () => {
                 <Route path="payment" element={<TenantPayment />} />
               </Route>
             )}
-            <Route path="/" element={<Navigate to={demoRole === "admin" ? "/admin" : "/tenant"} replace />} />
-            <Route path="*" element={<Navigate to={demoRole === "admin" ? "/admin" : "/tenant"} replace />} />
+
+            <Route
+              path="/"
+              element={
+                <Navigate
+                  to={userRole === "admin" ? "/admin" : "/tenant"}
+                  replace
+                />
+              }
+            />
+
+            <Route
+              path="*"
+              element={
+                <Navigate
+                  to={userRole === "admin" ? "/admin" : "/tenant"}
+                  replace
+                />
+              }
+            />
           </Routes>
-        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );

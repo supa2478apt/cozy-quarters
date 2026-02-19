@@ -8,12 +8,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyDysjzKO3lQB6FTlRBUkYCThdxP9ptNcxQ",
+  authDomain: "apartment-management-sys-7ea01.firebaseapp.com",
+  projectId: "apartment-management-sys-7ea01",
+  storageBucket: "apartment-management-sys-7ea01.firebasestorage.app",
+  messagingSenderId: "131824617998",
+  appId: "1:131824617998:web:0d51c0c36f13be3cef8a5f",
 };
 
 const app = initializeApp(firebaseConfig);
