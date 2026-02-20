@@ -1,104 +1,268 @@
-import { useState } from "react";
-import { Plus, Save, Zap, Droplets } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+import { Building2, Zap, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { mockMeters, mockRooms, mockTenants } from "@/data/mockData";
+
+type Room = {
+  id: string;
+  roomNumber: string;
+  apartmentId: string;
+};
+
+type Apartment = {
+  id: string;
+  name: string;
+};
+
+type Meter = {
+  id: string;
+  roomId: string;
+  apartmentId: string;
+  month: string;
+  waterPrev: number;
+  waterCurrent: number;
+  waterUsage: number;
+  waterRate: number;
+  electricPrev: number;
+  electricCurrent: number;
+  electricUsage: number;
+  electricRate: number;
+};
 
 export default function Meters() {
-  const [month] = useState("2025-01");
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [meters, setMeters] = useState<Meter[]>([]);
+
+  const [selectedRoom, setSelectedRoom] = useState("");
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+
+  const [waterPrev, setWaterPrev] = useState(0);
+  const [waterCurrent, setWaterCurrent] = useState(0);
+  const [electricPrev, setElectricPrev] = useState(0);
+  const [electricCurrent, setElectricCurrent] = useState(0);
+
+  const waterRate = 22;
+  const electricRate = 7;
+
+  /* ---------------- LOAD FIREBASE ---------------- */
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "rooms"), snap => {
+      setRooms(snap.docs.map(d => ({ id: d.id, ...(d.data() as Room) })));
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "apartments"), snap => {
+      setApartments(snap.docs.map(d => ({ id: d.id, ...(d.data() as Apartment) })));
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "meters"), snap => {
+      setMeters(snap.docs.map(d => ({ id: d.id, ...(d.data() as Meter) })));
+    });
+    return () => unsub();
+  }, []);
+
+  /* ---------------- GROUP ROOMS ---------------- */
+
+  const apartmentMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    apartments.forEach(a => (map[a.id] = a.name));
+    return map;
+  }, [apartments]);
+
+  const groupedRooms = useMemo(() => {
+    const sorted = [...rooms].sort((a, b) => {
+      if (a.apartmentId === b.apartmentId) {
+        return Number(a.roomNumber) - Number(b.roomNumber);
+      }
+      return a.apartmentId.localeCompare(b.apartmentId);
+    });
+
+    return sorted.reduce((acc, room) => {
+      if (!acc[room.apartmentId]) acc[room.apartmentId] = [];
+      acc[room.apartmentId].push(room);
+      return acc;
+    }, {} as Record<string, Room[]>);
+  }, [rooms]);
+
+  /* ---------------- AUTO LOAD PREVIOUS ---------------- */
+
+  useEffect(() => {
+    if (!selectedRoom) return;
+
+    const loadLast = async () => {
+      const q = query(
+        collection(db, "meters"),
+        where("roomId", "==", selectedRoom),
+        orderBy("month", "desc"),
+        limit(1)
+      );
+
+      const snap = await getDocs(q);
+
+      if (!snap.empty) {
+        const last = snap.docs[0].data() as Meter;
+        setWaterPrev(last.waterCurrent);
+        setElectricPrev(last.electricCurrent);
+      } else {
+        setWaterPrev(0);
+        setElectricPrev(0);
+      }
+    };
+
+    loadLast();
+  }, [selectedRoom]);
+
+  /* ---------------- SAVE ---------------- */
+
+  const saveReading = async () => {
+    if (!selectedRoom) return alert("กรุณาเลือกห้อง");
+
+    if (waterCurrent < waterPrev || electricCurrent < electricPrev)
+      return alert("ค่ามิเตอร์ปัจจุบันต้องมากกว่าค่าเดิม");
+
+    const exists = meters.find(
+      m => m.roomId === selectedRoom && m.month === month
+    );
+
+    if (exists) return alert("เดือนนี้บันทึกแล้ว");
+
+    const room = rooms.find(r => r.id === selectedRoom);
+
+    await addDoc(collection(db, "meters"), {
+      roomId: selectedRoom,
+      apartmentId: room?.apartmentId,
+      month,
+      waterPrev,
+      waterCurrent,
+      waterUsage: waterCurrent - waterPrev,
+      waterRate,
+      electricPrev,
+      electricCurrent,
+      electricUsage: electricCurrent - electricPrev,
+      electricRate,
+      createdAt: serverTimestamp(),
+    });
+
+    alert("บันทึกสำเร็จ");
+  };
+
+  /* ---------------- UI ---------------- */
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="max-w-3xl mx-auto space-y-6">
+
+      <div>
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Building2 size={20} />
+          บันทึกมิเตอร์
+        </h2>
+      </div>
+
+      <div className="bg-card p-6 rounded-2xl border shadow-sm space-y-5">
+
+        {/* Month */}
         <div>
-          <p className="text-muted-foreground text-sm">Record water & electricity readings — {month}</p>
+          <label className="text-sm font-medium">เดือน</label>
+          <Input
+            type="month"
+            value={month}
+            onChange={e => setMonth(e.target.value)}
+          />
         </div>
-        <Button className="bg-teal hover:bg-teal-dark text-white gap-2">
-          <Plus size={16} />
-          Add Reading
+
+        {/* Room */}
+        <div>
+          <label className="text-sm font-medium">เลือกห้อง</label>
+          <select
+            className="w-full border rounded-md h-11 px-3"
+            value={selectedRoom}
+            onChange={e => setSelectedRoom(e.target.value)}
+          >
+            <option value="">-- เลือกห้อง --</option>
+
+            {Object.entries(groupedRooms).map(([aptId, rooms]) => (
+              <optgroup
+                key={aptId}
+                label={`อาคาร ${apartmentMap[aptId] ?? aptId}`}
+              >
+                {rooms.map(r => (
+                  <option key={r.id} value={r.id}>
+                    ห้อง {r.roomNumber}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+
+        {/* Water */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Droplets size={16} /> มิเตอร์น้ำ
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-muted-foreground">เลขครั้งก่อน</label>
+              <Input type="number" value={waterPrev} disabled />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">เลขปัจจุบัน</label>
+              <Input
+                type="number"
+                value={waterCurrent}
+                onChange={e => setWaterCurrent(Number(e.target.value))}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Electric */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center gap-2">
+            <Zap size={16} /> มิเตอร์ไฟ
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-muted-foreground">เลขครั้งก่อน</label>
+              <Input type="number" value={electricPrev} disabled />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">เลขปัจจุบัน</label>
+              <Input
+                type="number"
+                value={electricCurrent}
+                onChange={e => setElectricCurrent(Number(e.target.value))}
+              />
+            </div>
+          </div>
+        </div>
+
+        <Button
+          onClick={saveReading}
+          className="w-full bg-teal-600 hover:bg-teal-700"
+        >
+          บันทึกมิเตอร์
         </Button>
-      </div>
-
-      {/* Info cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-card rounded-xl p-4 border border-border card-shadow flex items-center gap-4">
-          <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-blue-100">
-            <Droplets size={20} className="text-blue-600" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Water Rate</p>
-            <p className="text-foreground font-bold text-lg">฿10<span className="text-muted-foreground font-normal text-sm">/unit</span></p>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl p-4 border border-border card-shadow flex items-center gap-4">
-          <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-amber-100">
-            <Zap size={20} className="text-amber-600" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Electric Rate</p>
-            <p className="text-foreground font-bold text-lg">฿10<span className="text-muted-foreground font-normal text-sm">/unit</span></p>
-          </div>
-        </div>
-      </div>
-
-      {/* Meters table */}
-      <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-5 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">Room</th>
-                <th className="text-left px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">Tenant</th>
-                <th className="text-center px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">
-                  <div className="flex items-center justify-center gap-1"><Droplets size={12} /> Water (Prev → Cur)</div>
-                </th>
-                <th className="text-right px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">W.Usage</th>
-                <th className="text-right px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">W.Cost</th>
-                <th className="text-center px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">
-                  <div className="flex items-center justify-center gap-1"><Zap size={12} /> Electric (Prev → Cur)</div>
-                </th>
-                <th className="text-right px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">E.Usage</th>
-                <th className="text-right px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">E.Cost</th>
-                <th className="text-center px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mockMeters.map(meter => {
-                const room = mockRooms.find(r => r.id === meter.roomId);
-                const tenant = mockTenants.find(t => t.roomId === meter.roomId);
-                return (
-                  <tr key={meter.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-5 py-4 font-medium text-foreground">Room {room?.roomNumber}</td>
-                    <td className="px-4 py-4 text-muted-foreground text-sm">{tenant?.name ?? "—"}</td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2 text-blue-600">
-                        <span className="bg-blue-50 px-2 py-0.5 rounded font-mono text-xs">{meter.waterPrev}</span>
-                        <span className="text-muted-foreground">→</span>
-                        <span className="bg-blue-100 px-2 py-0.5 rounded font-mono text-xs font-semibold">{meter.waterCurrent}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-right font-medium">{meter.waterUsage} <span className="text-muted-foreground text-xs">u</span></td>
-                    <td className="px-4 py-4 text-right text-blue-600 font-semibold">฿{(meter.waterUsage * meter.waterRate).toLocaleString()}</td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2 text-amber-600">
-                        <span className="bg-amber-50 px-2 py-0.5 rounded font-mono text-xs">{meter.electricPrev}</span>
-                        <span className="text-muted-foreground">→</span>
-                        <span className="bg-amber-100 px-2 py-0.5 rounded font-mono text-xs font-semibold">{meter.electricCurrent}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-right font-medium">{meter.electricUsage} <span className="text-muted-foreground text-xs">u</span></td>
-                    <td className="px-4 py-4 text-right text-amber-600 font-semibold">฿{(meter.electricUsage * meter.electricRate).toLocaleString()}</td>
-                    <td className="px-4 py-4 text-center">
-                      <button className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-                        <Save size={14} className="text-muted-foreground" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );

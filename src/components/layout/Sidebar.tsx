@@ -14,6 +14,7 @@ import {
   LogOut,
   Settings,
   Home,
+  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +30,8 @@ const adminNav = [
   { to: "/admin/rooms", label: "Rooms", icon: DoorOpen },
   { to: "/admin/tenants", label: "Tenants", icon: Users },
   { to: "/admin/contracts", label: "Contracts", icon: FileText },
-  { to: "/admin/bills", label: "Billing", icon: Receipt },
+  { to: "/admin/bills", label: "Billing", icon: Landmark },
+  { to: "/admin/receipts", label: "Receipts", icon: Receipt },
   { to: "/admin/meters", label: "Meters", icon: Gauge },
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
 ];

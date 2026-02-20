@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 interface TopBarProps {
   title: string;
@@ -16,9 +17,11 @@ interface TopBarProps {
   role?: string;
   onSignOut: () => void;
   notifications?: number;
+  pendingBills?: any[];
 }
 
-export function TopBar({ title, userName, userEmail, role, onSignOut, notifications = 3 }: TopBarProps) {
+export function TopBar({ title, userName, userEmail, role, onSignOut, notifications = 0, pendingBills = [] }: TopBarProps) {
+  const navigate = useNavigate();
   return (
     <header className="h-14 flex items-center justify-between px-6 bg-card border-b border-border shrink-0">
       <div>
@@ -27,12 +30,52 @@ export function TopBar({ title, userName, userEmail, role, onSignOut, notificati
 
       <div className="flex items-center gap-3">
         {/* Notifications */}
-        <button className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <Bell size={18} />
-          {notifications > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose rounded-full" />
-          )}
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Bell size={18} />
+              {notifications > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 text-[10px] flex items-center justify-center"
+                >
+                  {notifications}
+                </Badge>
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <div className="px-3 py-2 font-medium text-sm border-b">
+              Pending Bills ({notifications})
+            </div>
+
+            <div className="max-h-72 overflow-y-auto">
+              {pendingBills.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground text-center">
+                  No pending bills
+                </div>
+              ) : (
+                pendingBills.slice(0, 5).map((bill) => (
+                  <DropdownMenuItem
+                    key={bill.id}
+                    onClick={() => navigate(`/admin/bills/${bill.id}`)}
+                    className="flex flex-col items-start gap-1 py-3 cursor-pointer"
+                  >
+                    <div className="text-sm font-medium">
+                      {bill.tenantName} - {bill.roomNumber}
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      ชำระค่าห้อง - ฿{bill.totalAmount?.toLocaleString()}
+                    </div>
+                  </DropdownMenuItem>
+                ))
+
+              )}
+            </div>
+          </DropdownMenuContent>
+
+        </DropdownMenu>
 
         {/* User menu */}
         <DropdownMenu>

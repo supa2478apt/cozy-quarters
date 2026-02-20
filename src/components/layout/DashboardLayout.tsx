@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { collection, query, where, onSnapshot , orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface DashboardLayoutProps {
   role: "admin" | "tenant";
@@ -31,6 +33,35 @@ export function DashboardLayout({ role, userName, userEmail, onSignOut }: Dashbo
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const title = pageTitles[location.pathname] ?? "Dashboard";
+  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingBills, setPendingBills] = useState<any[]>([]);
+
+
+  useEffect(() => {
+    if (role !== "admin") {
+      setPendingCount(0);
+      setPendingBills([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, "bills"),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const bills = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      setPendingBills(bills);
+      setPendingCount(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, [role]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -76,6 +107,8 @@ export function DashboardLayout({ role, userName, userEmail, onSignOut }: Dashbo
             userEmail={userEmail}
             role={role}
             onSignOut={onSignOut}
+            notifications={pendingCount}
+            pendingBills={pendingBills}
           />
         </div>
 

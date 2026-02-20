@@ -13,6 +13,8 @@ import Rooms from "./pages/admin/Rooms";
 import Tenants from "./pages/admin/Tenants";
 import Contracts from "./pages/admin/Contracts";
 import Bills from "./pages/admin/Bills";
+import BillDetail from "./pages/admin/BillDetail";
+import Receipts from "@/pages/admin/Receipts";
 import Meters from "./pages/admin/Meters";
 import Reports from "./pages/admin/Reports";
 
@@ -100,6 +102,8 @@ const App = () => {
                 <Route path="tenants" element={<Tenants />} />
                 <Route path="contracts" element={<Contracts />} />
                 <Route path="bills" element={<Bills />} />
+                <Route path="bills/:id" element={<BillDetail />} />
+                <Route path="receipts" element={<Receipts />} />
                 <Route path="meters" element={<Meters />} />
                 <Route path="reports" element={<Reports />} />
               </Route>

@@ -87,6 +87,7 @@ export type BillStatus = "unpaid" | "paid" | "overdue" | "pending";
 
 export interface Bill {
   id: string;
+  apartmentId: string;
   dormId: string;
   roomId: string;
   tenantId: string;
