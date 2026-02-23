@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   onSnapshot,
@@ -7,7 +7,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useNavigate } from "react-router-dom";
-
 import {
   Plus,
   Download,
@@ -18,6 +17,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+/* ================= TYPES ================= */
 
 type BillStatus = "paid" | "unpaid" | "pending" | "overdue";
 
@@ -39,30 +40,52 @@ type Bill = {
   createdAt: any;
 };
 
-const statusConfig = {
-  paid: { label: "Paid", icon: CheckCircle2, class: "status-paid" },
-  unpaid: { label: "Unpaid", icon: AlertCircle, class: "status-unpaid" },
-  overdue: { label: "Overdue", icon: Clock, class: "status-overdue" },
-  pending: { label: "Pending", icon: Zap, class: "status-pending" },
+/* ================= STATUS CONFIG ================= */
+
+const statusConfig: Record<
+  BillStatus,
+  { label: string; icon: any; class: string }
+> = {
+  paid: {
+    label: "Paid",
+    icon: CheckCircle2,
+    class: "status-paid",
+  },
+  unpaid: {
+    label: "Unpaid",
+    icon: AlertCircle,
+    class: "status-unpaid",
+  },
+  overdue: {
+    label: "Overdue",
+    icon: Clock,
+    class: "status-overdue",
+  },
+  pending: {
+    label: "Pending",
+    icon: Zap,
+    class: "status-pending",
+  },
 };
+
+/* ================= COMPONENT ================= */
 
 export default function Bills() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [statusFilter, setStatusFilter] =
     useState<BillStatus | "all">("all");
-
   const [showForm, setShowForm] = useState(false);
+
   const navigate = useNavigate();
 
   /* ---------------- LOAD FIREBASE ---------------- */
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "bills"), snap => {
-      const data = snap.docs.map(d => ({
+    const unsub = onSnapshot(collection(db, "bills"), (snap) => {
+      const data = snap.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Bill),
       }));
-
       setBills(data);
     });
 
@@ -72,15 +95,19 @@ export default function Bills() {
   /* ---------------- AUTO OVERDUE ---------------- */
 
   const processedBills = useMemo(() => {
-    return bills.map(b => {
+    return bills.map((b) => {
       if (
         b.status === "unpaid" &&
         b.dueDate &&
-        new Date(b.dueDate.seconds ? b.dueDate.seconds * 1000 : b.dueDate) <
-        new Date()
+        new Date(
+          b.dueDate.seconds
+            ? b.dueDate.seconds * 1000
+            : b.dueDate
+        ) < new Date()
       ) {
         return { ...b, status: "overdue" as BillStatus };
       }
+
       return b;
     });
   }, [bills]);
@@ -90,99 +117,91 @@ export default function Bills() {
   const filtered =
     statusFilter === "all"
       ? processedBills
-      : processedBills.filter(b => b.status === statusFilter);
+      : processedBills.filter(
+        (b) => b.status === statusFilter
+      );
 
   /* ---------------- TOTALS ---------------- */
 
   const totals = {
     all: processedBills.length,
-    paid: processedBills.filter(b => b.status === "paid").length,
-    unpaid: processedBills.filter(b => b.status === "unpaid").length,
-    overdue: processedBills.filter(b => b.status === "overdue").length,
-    pending: processedBills.filter(b => b.status === "pending").length,
+    paid: processedBills.filter((b) => b.status === "paid")
+      .length,
+    unpaid: processedBills.filter((b) => b.status === "unpaid")
+      .length,
+    overdue: processedBills.filter((b) => b.status === "overdue")
+      .length,
+    pending: processedBills.filter((b) => b.status === "pending")
+      .length,
   };
 
   const totalCollected = processedBills
-    .filter(b => b.status === "paid")
-    .reduce((s, b) => s + b.totalAmount, 0);
+    .filter((b) => b.status === "paid")
+    .reduce((sum, b) => sum + b.totalAmount, 0);
 
   const totalUnpaid = processedBills
-    .filter(b => b.status !== "paid")
-    .reduce((s, b) => s + b.totalAmount, 0);
+    .filter((b) => b.status !== "paid")
+    .reduce((sum, b) => sum + b.totalAmount, 0);
 
-  /* ---------------- UI ---------------- */
+  /* ================= UI ================= */
 
   return (
     <div className="space-y-5">
-      {/* Summary cards */}
+      {/* ================= SUMMARY CARDS ================= */}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl p-4 border border-border card-shadow">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            Collected
-          </p>
-          <p className="text-xl font-bold text-emerald-600 mt-1">
-            ฿{totalCollected.toLocaleString()}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {totals.paid} bills paid
-          </p>
-        </div>
+        <SummaryCard
+          title="Collected"
+          value={`฿${totalCollected.toLocaleString()}`}
+          subtitle={`${totals.paid} bills paid`}
+          color="text-emerald-600"
+        />
 
-        <div className="bg-card rounded-xl p-4 border border-border card-shadow">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            Outstanding
-          </p>
-          <p className="text-xl font-bold text-red-500 mt-1">
-            ฿{totalUnpaid.toLocaleString()}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {totals.unpaid + totals.overdue} bills pending
-          </p>
-        </div>
+        <SummaryCard
+          title="Outstanding"
+          value={`฿${totalUnpaid.toLocaleString()}`}
+          subtitle={`${totals.unpaid + totals.overdue
+            } bills pending`}
+          color="text-red-500"
+        />
 
-        <div className="bg-card rounded-xl p-4 border border-border card-shadow">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            Overdue
-          </p>
-          <p className="text-xl font-bold text-orange-500 mt-1">
-            {totals.overdue}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Requires attention
-          </p>
-        </div>
+        <SummaryCard
+          title="Overdue"
+          value={totals.overdue}
+          subtitle="Requires attention"
+          color="text-orange-500"
+        />
 
-        <div className="bg-card rounded-xl p-4 border border-border card-shadow">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            Awaiting
-          </p>
-          <p className="text-xl font-bold text-amber-500 mt-1">
-            {totals.pending}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Slip uploaded
-          </p>
-        </div>
+        <SummaryCard
+          title="Awaiting"
+          value={totals.pending}
+          subtitle="Slip uploaded"
+          color="text-amber-500"
+        />
       </div>
 
-      {/* Filter Tabs */}
+      {/* ================= FILTER ================= */}
+
       <div className="flex gap-2 flex-wrap">
-        {(["all", "paid", "unpaid", "overdue", "pending"] as const).map(s => (
+        {(
+          ["all", "paid", "unpaid", "overdue", "pending"] as const
+        ).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${statusFilter === s
-              ? "bg-teal text-white border-teal"
-              : "bg-card text-muted-foreground border-border hover:border-teal/40 hover:text-teal"
+                ? "bg-teal text-white border-teal"
+                : "bg-card text-muted-foreground border-border hover:border-teal/40 hover:text-teal"
               }`}
           >
-            {s.charAt(0).toUpperCase() + s.slice(1)} ({totals[s]})
+            {s.charAt(0).toUpperCase() + s.slice(1)} (
+            {totals[s]})
           </button>
         ))}
       </div>
 
-      {/* Table */}
-      {/* Bills table */}
+      {/* ================= TABLE ================= */}
+
       <div className="bg-card rounded-xl card-shadow border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -199,12 +218,14 @@ export default function Bills() {
                   "Due Date",
                   "Status",
                   "",
-                ].map(h => (
+                ].map((h) => (
                   <th
                     key={h}
-                    className={`px-4 py-3.5 text-muted-foreground font-medium text-xs uppercase tracking-wide ${["Rent", "Water", "Electric", "Total"].includes(h)
-                      ? "text-right"
-                      : "text-left"
+                    className={`px-4 py-3.5 text-xs uppercase tracking-wide font-medium text-muted-foreground ${["Rent", "Water", "Electric", "Total"].includes(
+                      h
+                    )
+                        ? "text-right"
+                        : "text-left"
                       }`}
                   >
                     {h}
@@ -214,20 +235,19 @@ export default function Bills() {
             </thead>
 
             <tbody>
-              {filtered.map(bill => {
+              {filtered.map((bill) => {
                 const cfg = statusConfig[bill.status];
 
-                const due =
-                  bill.dueDate?.seconds
-                    ? new Date(bill.dueDate.seconds * 1000)
-                    : new Date(bill.dueDate);
+                const due = bill.dueDate?.seconds
+                  ? new Date(bill.dueDate.seconds * 1000)
+                  : new Date(bill.dueDate);
 
                 return (
                   <tr
                     key={bill.id}
                     className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-4 py-3.5 font-medium text-foreground whitespace-nowrap">
+                    <td className="px-4 py-3.5 font-medium whitespace-nowrap">
                       {bill.month}
                     </td>
 
@@ -251,11 +271,11 @@ export default function Bills() {
                       ฿{bill.electricPrice.toLocaleString()}
                     </td>
 
-                    <td className="px-4 py-3.5 text-right font-semibold text-foreground">
+                    <td className="px-4 py-3.5 text-right font-semibold">
                       ฿{bill.totalAmount.toLocaleString()}
                     </td>
 
-                    <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">
+                    <td className="px-4 py-3.5 whitespace-nowrap text-muted-foreground">
                       {due.toLocaleDateString("en-GB", {
                         day: "numeric",
                         month: "short",
@@ -272,7 +292,8 @@ export default function Bills() {
                     </td>
 
                     <td className="px-4 py-3.5">
-                      <button className="text-xs text-teal hover:underline font-medium"
+                      <button
+                        className="text-xs text-teal hover:underline font-medium"
                         onClick={() => navigate(`${bill.id}`)}
                       >
                         View
@@ -285,6 +306,34 @@ export default function Bills() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ================= REUSABLE CARD ================= */
+
+function SummaryCard({
+  title,
+  value,
+  subtitle,
+  color,
+}: {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  color: string;
+}) {
+  return (
+    <div className="bg-card rounded-xl p-4 border border-border card-shadow">
+      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+        {title}
+      </p>
+      <p className={`text-xl font-bold mt-1 ${color}`}>
+        {value}
+      </p>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        {subtitle}
+      </p>
     </div>
   );
 }

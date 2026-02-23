@@ -14,7 +14,8 @@ import Tenants from "./pages/admin/Tenants";
 import Contracts from "./pages/admin/Contracts";
 import Bills from "./pages/admin/Bills";
 import BillDetail from "./pages/admin/BillDetail";
-import Receipts from "@/pages/admin/Receipts";
+import Receipts from "./pages/admin/Receipts";
+import ReDetail from "./pages/admin/ReDetail";
 import Meters from "./pages/admin/Meters";
 import Reports from "./pages/admin/Reports";
 
@@ -104,6 +105,7 @@ const App = () => {
                 <Route path="bills" element={<Bills />} />
                 <Route path="bills/:id" element={<BillDetail />} />
                 <Route path="receipts" element={<Receipts />} />
+                <Route path="receipts/:id" element={<ReDetail />} />
                 <Route path="meters" element={<Meters />} />
                 <Route path="reports" element={<Reports />} />
               </Route>

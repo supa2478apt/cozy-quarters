@@ -237,7 +237,7 @@ export default function Receipts() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => navigate(`/bills/${p.billId}`)}
+                        onClick={() => navigate(`/admin/receipts/${p.billId}`)}
                       >
                         ดูใบเสร็จ
                       </Button>
